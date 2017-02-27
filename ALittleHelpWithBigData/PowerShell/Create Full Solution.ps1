@@ -10,22 +10,19 @@ Write-Host "Script Start Time: $scriptStartTime"
 <# rootName value will be prepended to many other values. 
 Please make sure this value only includes lower case letters and numbers.
 Value should be kept as short as possible while still conveying meaning #>
-$rootNameValue = ""
+$rootNameValue = "lttlhlp"
 
 # Location where the solution files are stored
-$rootSourceFileLocation = ""
+$rootSourceFileLocation = "C:\Users\mavail\OneDrive - Microsoft\GitHub\ALittleHelpWithBigData"
 
 # Subscription ID for the Azure Subscription that will house the solution
-$azureSubscriptionIDValue = ""
+$azureSubscriptionIDValue = "39266f84-b3d9-4256-98bb-c7573ce230df"
 
 # Name of the Azure Automation account that will be used for this solution
-$automationAccountName = ""
+$automationAccountName = "Automation"
 
 # Name of the resource group to which the Azure Automation account belongs
-$automationResourceGroup = ""
-
-# Administrator(s) of Azure Analysis Services instance - Example: bigbird@microsoft.com
-$genericActiveDirectoryAdminValue = "" 
+$automationResourceGroup = "AutomationRG"
 
 #*************************************************************************
 # END MADATORY VARIABLE ENTRY 
@@ -61,7 +58,22 @@ function GetAutomationVariableValue
         Write-Error -Message $_.Exception
         throw $_.Exception
     }
-}# Create function to set variable value
+}# Build Azure Automation Variable Names based on POCRootName
+$resourceGroupNameVariable = "$($rootNameValue)ResourceGroupName"
+$storageAccountNameVariable = "$($rootNameValue)StorageAccountName"
+$rawFilesContainerVariable = "$($rootNameValue)RawFileContainerName"
+$clusterStorageContainerVariable = "$($rootNameValue)ClusterStorageContainerName"
+$sqlServerNameVariable = "$($rootNameValue)SQLServerName"
+$genericActiveDirectoryAdminVariable = "$($rootNameValue)GenericActiveDirectoryAdmin"
+$hiveScriptExecutionCompletedVariable = "$($rootNameValue)HiveScriptExecutionCompleted"
+$sqlDWNameVariable = "$($rootNameValue)SQLDWName"
+$tsqlScriptExecutionCompletedVariable = "$($rootNameValue)TSQLScriptExecutionCompleted"
+
+
+$resourceGroupName = GetAutomationVariableValue -variableName $resourceGroupNameVariable
+$storageAccountName = GetAutomationVariableValue -variableName $storageAccountNameVariable
+$rawFilesContainer = GetAutomationVariableValue -variableName $rawFilesContainerVariable
+$clusterStorageContainer = GetAutomationVariableValue -variableName $clusterStorageContainerVariable$sqlServerName = GetAutomationVariableValue -variableName $sqlServerNameVariable$genericActiveDirectoryAdmin = GetAutomationVariableValue -variableName $genericActiveDirectoryAdminVariable$hiveScriptExecutionCompleted = GetAutomationVariableValue -variableName $hiveScriptExecutionCompletedVariable$sqlDWName = GetAutomationVariableValue -variableName $sqlDWNameVariable$tsqlScriptExecutionCompleted = GetAutomationVariableValue -variableName $tsqlScriptExecutionCompletedVariable$hadoopStoragePath = "wasbs://$clusterStorageContainer@$storageAccountName.blob.core.windows.net"$sqlScriptsSourceLocation = "$rootSourceFileLocation\TSQL"# Create function to set variable value
 function SetAutomationVariableValue
 {
 
@@ -141,22 +153,7 @@ function RunHiveQuery
         throw $_.Exception
     }
 
-}# Build Azure Automation Variable Names based on POCRootName
-$resourceGroupNameVariable = "$($rootNameValue)ResourceGroupName"
-$storageAccountNameVariable = "$($rootNameValue)StorageAccountName"
-$rawFilesContainerVariable = "$($rootNameValue)RawFileContainerName"
-$clusterStorageContainerVariable = "$($rootNameValue)ClusterStorageContainerName"
-$sqlServerNameVariable = "$($rootNameValue)SQLServerName"
-$genericActiveDirectoryAdminVariable = "$($rootNameValue)GenericActiveDirectoryAdmin"
-$hiveScriptExecutionCompletedVariable = "$($rootNameValue)HiveScriptExecutionCompleted"
-$sqlDWNameVariable = "$($rootNameValue)SQLDWName"
-$tsqlScriptExecutionCompletedVariable = "$($rootNameValue)TSQLScriptExecutionCompleted"
-$miscFilesContainerNameVariable = "$($rootNameValue)MiscFilesContainer"
-
-$resourceGroupName = GetAutomationVariableValue -variableName $resourceGroupNameVariable
-$storageAccountName = GetAutomationVariableValue -variableName $storageAccountNameVariable
-$rawFilesContainer = GetAutomationVariableValue -variableName $rawFilesContainerVariable
-$clusterStorageContainer = GetAutomationVariableValue -variableName $clusterStorageContainerVariable$sqlServerName = GetAutomationVariableValue -variableName $sqlServerNameVariable$genericActiveDirectoryAdmin = GetAutomationVariableValue -variableName $genericActiveDirectoryAdminVariable$hiveScriptExecutionCompleted = GetAutomationVariableValue -variableName $hiveScriptExecutionCompletedVariable$sqlDWName = GetAutomationVariableValue -variableName $sqlDWNameVariable$miscFilesContainerName = GetAutomationVariableValue -variableName $miscFilesContainerNameVariable$hadoopStoragePath = "wasbs://$clusterStorageContainer@$storageAccountName.blob.core.windows.net"$sqlScriptsSourceLocation = "$rootSourceFileLocation\TSQL"# Create function to Start Runbookfunction StartRunbook{    param    (        [string]$runBookName    )    Write-Host "Executing runbook $runBookName... `r`n"    try
+}# Create function to Start Runbookfunction StartRunbook{    param    (        [string]$runBookName    )    Write-Host "Executing runbook $runBookName... `r`n"    try
     {
         If((Get-AzureRmAutomationRunbook `
             -AutomationAccountName $automationAccountName `
@@ -256,50 +253,13 @@ foreach ($file in $files)
 
 }
 
-"All files in $rawFileSourceLocation successfully processed."#***************************************************************************************************
-# Upload XMLA Script for SSAS Tabular Database
-#***************************************************************************************************
-
-<#
-$xmlaScriptSourceLocation = "$rootSourceFileLocation\ASTabular"
-
-$xmlaScriptFile = "ALittleHelpWithBigData.xmla"
-
-$xmlaScriptSourcePath = "$xmlaScriptSourceLocation\$xmlaScriptFile"
-
-
-Write-Host "Upload $xmlaScriptFile to $miscFilesContainerName"
-    
-try{
-    If(!($blob = Get-AzureStorageBlob -Blob $xmlaScriptFile -Container $miscFilesContainerName -Context $azureContext -ErrorAction SilentlyContinue))
-    {
-
-        Write-Host "Uploading $xmlaScriptFile"
-        Set-AzureStorageBlobContent `
-            -Context $azureContext `
-            -Container $miscFilesContainerName `
-            -File $xmlaScriptSourcePath `
-            -ErrorAction Stop
-
-        Write-Host "$xmlaScriptFile uploaded to $miscFilesContainerName successfully. `r`n"
-
-    }
-    Else
-    {
-        Write-Host "$xmlaScriptFile already exists in $miscFilesContainerName. `r`n"
-    }
-}
-catch
-{
-    Write-Error -Message $_.Exception
-    throw $_.Exception
-}#>#*************************************************************************
+"All files in $rawFileSourceLocation successfully processed."#*************************************************************************
 # EXECUTE RUNBOOK TO CREATE HDINSIGHT HADOOP CLUSTER
 #*************************************************************************Write-Host "Starting runbook $runbookParentCreateHDInsightHadoopCluster... `r`n"StartRunbook -runBookName $runbookParentCreateHDInsightHadoopCluster#*************************************************************************
 # EXECUTE RUNBOOK TO CREATE AND POPULATE HIVE TABLES
 #*************************************************************************Write-Host "Starting runbook $runbookParentExecuteHiveQuery... `r`n"StartRunbook -runBookName $runbookParentExecuteHiveQuery#*************************************************************************
 # CONFIGURE SQL DATA WAREHOUSE FOR EXTERNAL FILE ACCESS
-#*************************************************************************$tsqlScriptExecutionCompleted = GetAutomationVariableValue -variableName $tsqlScriptExecutionCompletedVariableif($tsqlScriptExecutionCompleted -eq "N"){    #*************************************************************************
+#*************************************************************************if($tsqlScriptExecutionCompleted -eq "N"){    #*************************************************************************
     # CONFIGURE SQL DATA WAREHOUSE FOR EXTERNAL FILE ACCESS
     #*************************************************************************    Write-Host "Executing TSQL steps via SQLCMD to configure $sqlDWName for external file access for Polybase..."
     
